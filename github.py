@@ -80,7 +80,7 @@ def main():
     github_url = "https://github.com/AravindhGoutham/NETMAN-MID.git"  # GitHub repo URL
     username = "AravindhGoutham"  #GitHub username
     token = getpass.getpass("Enter your GitHub personal access token (hidden): ")
-    branch = ""
+    branch = "main"
 
     # Initialize the repository
     repo = init_repo(repo_dir)  # Initialize or get the repository at the given path
