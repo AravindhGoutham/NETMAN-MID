@@ -1,0 +1,6 @@
+[FIFA_Teams]
+Liverpool ansible_host=10.224.76.137 ansible_user=student ansible_password="netman" ansible_python_interpreter=/usr/bin/python3
+RealMadrid ansible_host=10.224.77.159 ansible_user=student ansible_password="netman" ansible_python_interpreter=/usr/bin/python3
+
+[FIFA_Admin]
+FIFA_admin ansible_host=10.224.76.252 ansible_user=netman ansible_become=true ansible_become_method=sudo ansible_become_password="Aravindh@008" ansible_python_interpreter=/usr/bin/python3 ansible_ssh_common_args='-o StrictHostKeyChecking=no'

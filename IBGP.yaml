@@ -1,0 +1,24 @@
+- name: Configure iBGP on Routers
+  hosts: Routers
+  gather_facts: no
+  tasks:
+
+    - name: Configure BGP on R1
+      ios_config:
+        parents: "router bgp 100"
+        lines:
+          - "neighbor 198.51.100.3 remote-as 100"
+          - "network 10.10.10.1 mask 255.255.255.255"
+          - "network 11.11.11.1 mask 255.255.255.255"
+          - "network 198.51.100.0 mask 255.255.255.0"
+      when: inventory_hostname == "R1"
+
+    - name: Configure BGP on R2
+      ios_config:
+        parents: "router bgp 100"
+        lines:
+          - "neighbor 198.51.100.1 remote-as 100"
+          - "network 20.20.20.1 mask 255.255.255.255"
+          - "network 22.22.22.1 mask 255.255.255.255"
+          - "network 198.51.100.0 mask 255.255.255.0"
+      when: inventory_hostname == "R2"

@@ -1,0 +1,207 @@
+---
+- name: Create users and groups on Liverpool and RealMadrid
+  hosts: FIFA_Teams
+  become: yes
+  tasks:
+
+    - name: Create Attack, Defense, Captain, and Wheel groups
+      group:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - Attack
+        - Defense
+        - Captain
+        - wheel
+
+    - name: Create users and assign them to groups
+      user:
+        name: "{{ item.username }}"
+        groups: "{{ item.groups }}"
+        append: yes
+        state: present
+      loop:
+        - { username: hkewell, groups: Attack }
+        - { username: mowen, groups: Attack }
+        - { username: jcarragher, groups: Defense }
+        - { username: dagger, groups: Defense }
+        - { username: sgerrard, groups: "Captain,wheel" }
+        - { username: lfigo, groups: Attack }
+        - { username: rsoldado, groups: Attack }
+        - { username: rcarlos, groups: Defense }
+        - { username: fcannavaro, groups: Defense }
+        - { username: zzidane, groups: "Captain,wheel" }
+
+    - name: Set permissions for Attack group users (rw-rw-rw-)
+      file:
+        path: "/home/{{ item }}"
+        mode: "0666"
+        state: directory
+      loop:
+        - hkewell
+        - mowen
+        - lfigo
+        - rsoldado
+
+    - name: Set permissions for Defense group users (--x--x--x)
+      file:
+        path: "/home/{{ item }}"
+        mode: "0111"
+        state: directory
+      loop:
+        - jcarragher
+        - dagger
+        - rcarlos
+        - fcannavaro
+
+    - name: Set permissions for Captain group users (rwxrwxrwx)
+      file:
+        path: "/home/{{ item }}"
+        mode: "0777"
+        state: directory
+      loop:
+        - sgerrard
+        - zzidane
+
+
+    - name: Create Route_Info directory for Liverpool and Real Madrid
+      file:
+        path: "/{{ inventory_hostname }}_Admin/Route_Info/"
+        state: directory
+        owner: "{{ 'sgerrard' if inventory_hostname == 'Liverpool' else 'zzidane' }}"
+        group: Captain
+        mode: "0775"
+
+    - name: Set read-only permissions for non-Captain users
+      acl:
+        path: "/{{ inventory_hostname }}_Admin/Route_Info/"
+        entity: "{{ item }}"
+        etype: group
+        permissions: r
+        state: present
+      loop:
+        - Attack
+        - Defense
+
+    - name: Create Captain_Details.txt with captain's details
+      copy:
+        dest: "/{{ inventory_hostname }}_Admin/Route_Info/Captain_Details.txt"
+        content: |
+          Full Name: {{ 'Steven Gerrard' if inventory_hostname == 'Liverpool' else 'Zinedine Zidane' }}
+          Nationality: {{ 'England' if inventory_hostname == 'Liverpool' else 'France' }}
+          Username: {{ 'sgerrard' if inventory_hostname == 'Liverpool' else 'zzidane' }}
+        owner: "{{ 'sgerrard' if inventory_hostname == 'Liverpool' else 'zzidane' }}"
+        group: Captain
+        mode: "0664"
+
+
+
+- name: Collect route table and process information, transfer files to FIFA_admin
+  hosts: FIFA_Teams
+  become: yes
+  tasks:
+
+    - name: Capture route table
+      shell: "netstat -r"
+      register: route_table_output
+
+    - name: Save route table to file
+      copy:
+        content: "{{ route_table_output.stdout }}"
+        dest: "/tmp/route_table_{{ inventory_hostname }}.txt"
+
+    - name: Capture top 10 memory-consuming processes
+      shell: "ps aux --sort=-%mem | head -10"
+      register: process_output
+
+    - name: Save process output to file
+      copy:
+        content: "{{ process_output.stdout }}"
+        dest: "/tmp/top_processes_{{ inventory_hostname }}.txt"
+
+    - name: Transfer route table file to FIFA_admin
+      expect:
+        command: "scp -o StrictHostKeyChecking=no /tmp/route_table_{{ inventory_hostname }}.txt netman@10.224.76.252:/home/FIFA_admin/route_table_{{ inventory_hostname }}.txt"
+        responses:
+          "password:": "Aravindh@008"
+        timeout: 30
+
+    - name: Transfer process file to FIFA_admin
+      expect:
+        command: "scp -o StrictHostKeyChecking=no /tmp/top_processes_{{ inventory_hostname }}.txt netman@10.224.76.252:/home/FIFA_admin/top_processes_{{ inventory_hostname }}.txt"
+        responses:
+          "password:": "Aravindh@008"
+        timeout: 30
+
+- name: Collect and Merge SSH Public Keys
+  hosts: FIFA_Teams
+  become: yes
+  tasks:
+
+    - name: Ensure the .ssh directory exists for root
+      file:
+        path: /root/.ssh
+        state: directory
+        mode: '0700'
+
+    - name: Gather SSH Public Keys for Liverpool Players
+      assemble:
+        src: "/home/student/.ssh/"
+        dest: "/root/.ssh/Liverpool_authorizedKeys.txt"
+        regexp: "mowen.pub|dagger.pub|sgerrard.pub"
+      when: "'Liverpool' in inventory_hostname"
+
+    - name: Gather SSH Public Keys for Real Madrid Players
+      assemble:
+        src: "/home/student/.ssh/"
+        dest: "/root/.ssh/RealMadrid_authorizedKeys.txt"
+        regexp: "lfigo.pub|fcannavaro.pub|zzidane.pub"
+      when: "'RealMadrid' in inventory_hostname"
+
+    - name: Set permissions for Liverpool_authorizedKeys.txt
+      file:
+        path: "/root/.ssh/Liverpool_authorizedKeys.txt"
+        mode: '0600'
+      when: "'Liverpool' in inventory_hostname"
+
+    - name: Set permissions for RealMadrid_authorizedKeys.txt
+      file:
+        path: "/root/.ssh/RealMadrid_authorizedKeys.txt"
+        mode: '0600'
+      when: "'RealMadrid' in inventory_hostname"
+
+
+- name: Transfer Authorized Keys to FIFA_admin
+  hosts: FIFA_Teams
+  become: yes
+  tasks:
+
+    - name: Copy Liverpool Authorized Keys to FIFA_admin
+      expect:
+        command: "scp -o StrictHostKeyChecking=no /root/.ssh/Liverpool_authorizedKeys.txt netman@10.224.76.252:/home/netman/"
+        responses:
+          "password:": "Aravindh@008"
+        timeout: 30
+      when: "'Liverpool' in inventory_hostname"
+
+    - name: Copy Real Madrid Authorized Keys to FIFA_admin
+      expect:
+        command: "scp -o StrictHostKeyChecking=no /root/.ssh/RealMadrid_authorizedKeys.txt netman@10.224.76.252:/home/netman/"
+        responses:
+          "password:": "Aravindh@008"
+        timeout: 30
+      when: "'RealMadrid' in inventory_hostname"
+
+- name: Move files to root SSH directory on FIFA_admin
+  hosts: FIFA_admin
+  become: yes
+  tasks:
+    - name: Move Liverpool Authorized Keys to /root/.ssh/
+      command: mv /home/netman/Liverpool_authorizedKeys.txt /root/.ssh/
+      args:
+        removes: /home/netman/Liverpool_authorizedKeys.txt
+
+    - name: Move Real Madrid Authorized Keys to /root/.ssh/
+      command: mv /home/netman/RealMadrid_authorizedKeys.txt /root/.ssh/
+      args:
+        removes: /home/netman/RealMadrid_authorizedKeys.txt

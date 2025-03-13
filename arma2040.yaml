@@ -1,0 +1,23 @@
+---
+- name: Install required packages on Liverpool and RealMadrid
+  hosts: FIFA_Teams
+  become: yes
+  tasks:
+    - name: Install necessary packages
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - apache2    # HTTP package
+        - vsftpd     # FTP package
+        - python3-pip
+        - expect
+
+    - name: Ensure services are enabled and started
+      systemd:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+      loop:
+        - apache2
+        - vsftpd

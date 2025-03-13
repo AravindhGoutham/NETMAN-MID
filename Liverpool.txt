@@ -1,0 +1,19 @@
+- name: Manage Liverpool Team
+  hosts: FIFA_Teams
+  gather_facts: no
+  tasks:
+    - name: Group hosts dynamically
+      group_by:
+        key: "team_Liverpool"
+
+    - name: Wait for 10 seconds
+      wait_for:
+        timeout: 10
+
+    - name: Set a fact about the manager
+      set_fact:
+        manager_name: "Jurgen Klopp"
+
+    - name: Show manager fact
+      debug:
+        msg: "The Liverpool manager is {{ manager_name }}"
